@@ -148,7 +148,7 @@ class CNN(nn.Module):
         return output
 
 
-def LeNet():
+def LeNet(nclasses=10):
     kernels = [
         KernelParams(outchannels=20, shape=(5, 5), stride=(1, 1), padding=(1, 1)),
         KernelParams(outchannels=20, shape=(5, 5), stride=(1, 1), padding=(1, 1)),
@@ -159,9 +159,11 @@ def LeNet():
         PoolingParams(shape=(2, 2), stride=(1, 1), padding=(0, 0), mode='max')
     ]
 
-    return CNN((1, 28, 28), kernels, pools, n_units=[500, 500])
+    cnn = CNN((1, 28, 28), kernels, pools, n_units=[500, 500])
 
-def AlexNet():
+    return nn.Sequential(cnn, nn.Linear(500, nclasses), nn.Softmax(dim=1))
+
+def AlexNet(nclasses=10):
     ernels = [
         KernelParams(outchannels=20, shape=(5, 5), stride=(1, 1), padding=(1, 1)),
         KernelParams(outchannels=20, shape=(5, 5), stride=(1, 1), padding=(1, 1)),
@@ -172,4 +174,6 @@ def AlexNet():
         PoolingParams(shape=(2, 2), stride=(1, 1), padding=(0, 0), mode='max')
     ]
 
-    return CNN((1, 28, 28), kernels, pools, n_units=[500, 500])
+    cnn = CNN((1, 28, 28), kernels, pools, n_units=[500, 500])
+
+    return nn.Sequential(cnn, nn.Linear(500, nclasses), nn.Softmax(dim=1))
