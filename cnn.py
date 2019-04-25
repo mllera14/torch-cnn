@@ -147,6 +147,103 @@ class CNN(nn.Module):
 
         return output
 
+class RCNN(nn.Module):
+    def __init__(
+        self,
+        # CNN params
+        input_shape,
+        kernels,
+        pools,
+        # RNN core params
+        rnn_core,
+        hidden_size=32,
+        n_layers=1,
+        dropout=0.0,
+        batch_first=True
+    ):
+        super(RCNN, self).__init__()
+
+        if len(pools) != len(kernels):
+            raise ValueError('Number of pooling  and convolution layers do not match')
+
+        self.input_shape = input_shape
+        self.batch_first = batch_first
+
+        in_chann, h, w = input_shape
+
+        conv_layers = []
+        for i, (conv_shape, pool_shape) in enumerate(zip(kernels, pools)):
+
+            conv = _create_conv2d(in_chann, *conv_shape)
+            pool = _create_pool(*pool_shape)
+
+            conv_layers.extend([conv, pool])
+
+            in_chann = conv_shape.outchannels
+
+        in_shape = np.prod(_conv2D_out_features(self.input_shape, kernels, pools))
+
+        rnn = init_model(rnn_core, hidden_size, in_shape, n_layers, dropout, False)
+
+        self.cnn = nn.Sequential(*conv_layers)
+        self.rnn = rnn
+
+    def reset_parameters(self):
+        self.cnn.reset_parameters()
+        self.rnn.reset_parameters()
+
+    def forward(self, input, hidden=None):
+        if self.batch_first:
+            input = input.transpose(0, 1)
+        seqlen, batch_size = input.size(0), input.size(1)
+
+        img_features = []
+        for img in input:
+            unflattened = _unflatten(img, self.input_shape)
+            convolved = _flatten(self.cnn(unflattened), batch_size)
+            img_features.append(convolved)
+
+        img_features = torch.stack(img_features)
+
+        out, hidden = self.rnn(img_features, hidden)
+
+        if self.batch_first:
+            out = out.transpose(0, 1)
+
+        return out, hidden
+
+
+def init_rcnn(model_type, hidden_size, input_size, n_layers, dropout=0.0, batch_first=True):
+    if model_type == 'RNN':
+        rnn = nn.RNN(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=n_layers,
+            nonlinearity='relu',
+            batch_first=batch_first,
+            dropout=dropout
+        )
+
+    if model_type == 'LSTM':
+        rnn = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=n_layers,
+            batch_first=batch_first,
+            dropout=dropout
+        )
+
+    elif model_type == 'GRU':
+        rnn = nn.GRU(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=n_layers,
+            batch_first=batch_first,
+            dropout=dropout
+        )
+
+    return rnn
+
 
 def LeNet(nclasses=10):
     kernels = [
