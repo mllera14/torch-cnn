@@ -261,7 +261,7 @@ def LeNet(nclasses=10):
     return nn.Sequential(cnn, nn.Linear(500, nclasses), nn.Softmax(dim=1))
 
 def AlexNet(nclasses=10):
-    ernels = [
+    kernels = [
         KernelParams(outchannels=20, shape=(5, 5), stride=(1, 1), padding=(1, 1)),
         KernelParams(outchannels=20, shape=(5, 5), stride=(1, 1), padding=(1, 1)),
     ]
